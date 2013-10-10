@@ -7,103 +7,6 @@ import sys
 import time
 import random
 
-def generate_noise(size_x, size_y):
-    def fade(t):
-            return t * t * t * (t * (t * 6 - 15) + 10)
-    def lerp(t, a, b):
-        return a + t * (b - a)
-    def grad(hash, x, y, z):
-        #CONVERT LO 4 BITS OF HASH CODE INTO 12 GRADIENT DIRECTIONS.
-        h = hash & 15
-        if h < 8: u = x
-        else:     u = y
-        if h < 4: v = y
-        else:
-            if h == 12 or h == 14: v = x
-            else:  v = z
-
-        if h&1 == 0: first = u
-        else:        first = -u
-        if h&2 == 0: second = v
-        else:        second = -v
-        return first + second
-    
-    def noise(x,y,z):
-        #FIND UNIT CUBE THAT CONTAINS POINT.
-        X = int(x)&(tiledim-1)
-        Y = int(y)&(tiledim-1)
-        Z = int(z)&(tiledim-1)
-        #FIND RELATIVE X,Y,Z OF POINT IN CUBE.
-        x -= int(x)
-        y -= int(y)
-        z -= int(z)
-        #COMPUTE FADE CURVES FOR EACH OF X,Y,Z.
-        u = fade(x)
-        v = fade(y)
-        w = fade(z)
-        #HASH COORDINATES OF THE 8 CUBE CORNERS
-        A = p[X  ]+Y; AA = p[A]+Z; AB = p[A+1]+Z
-        B = p[X+1]+Y; BA = p[B]+Z; BB = p[B+1]+Z
-        #AND ADD BLENDED RESULTS FROM 8 CORNERS OF CUBE
-        return lerp(w,lerp(v,
-                           lerp(u,grad(p[AA  ],x  ,y  ,z  ),
-                                  grad(p[BA  ],x-1,y  ,z  )),
-                           lerp(u,grad(p[AB  ],x  ,y-1,z  ),
-                                  grad(p[BB  ],x-1,y-1,z  ))),
-                      lerp(v,
-                           lerp(u,grad(p[AA+1],x  ,y  ,z-1),
-                                  grad(p[BA+1],x-1,y  ,z-1)),
-                           lerp(u,grad(p[AB+1],x  ,y-1,z-1), 
-                                  grad(p[BB+1],x-1,y-1,z-1))))
-    
-    tiledim = 16   #In nodes
-    tilesize = float(size_x) / tiledim
-
-    p = []
-    for x in xrange(2*tiledim):
-        p.append(0)
-        
-    permutation = []
-    for value in xrange(tiledim):
-        permutation.append(value)
-    random.shuffle(permutation)
-
-    for i in xrange(tiledim):
-        p[i] = permutation[i]
-        p[tiledim+i] = p[i]
-       
-    surface = pygame.Surface((size_x, size_y))
-    octaves = 1
-    persistence = 0.7
-    
-    amplitude = 1.0
-    maxamplitude = 1.0
-    for octave in xrange(octaves):
-        amplitude *= persistence
-        maxamplitude += amplitude
-
-    surface.lock()
-    for x in xrange(size_x):
-        for y in xrange(size_y):
-            sc = 1.0
-            frequency = 1.0
-            amplitude = 1.0
-            color = 0.0
-            for octave in xrange(octaves):
-                sc *= frequency
-                grey = noise(sc*float(x)/size_x,sc*float(y)/size_y, 0.0)
-                grey = (grey+1.0)/2.0
-                grey *= amplitude
-                color += grey
-                frequency *= 2.0
-                amplitude *= persistence
-            color /= maxamplitude
-            color = int(round(color*255.0))
-            surface.set_at((x,y),(color*0.9,color,color*0.8))
-    surface.unlock()
-
-    return surface
-
 class Map(object):
 	def __init__(self, size_x, size_y):
 		self.size_x = size_x
@@ -144,7 +47,7 @@ class Map(object):
 
 		self.sectors = self.board.create_mesh(num_sectors, self.players)
 
-	def draw_map_pygame(self, noise_bg=False):
+	def draw_map_pygame(self):
 		pygame.init() 
 		window = pygame.display.set_mode((self.size_x, self.size_y))
 		pygame.display.set_caption('Random Map for MapWarfare')
@@ -152,10 +55,8 @@ class Map(object):
 		transf_vector = Point(-self.size_x, -self.size_y)
 		sector_font = pygame.font.SysFont("Tahoma", 35)
 
-		def draw_heightmap():
-			terrain = generate_noise(self.size_x, self.size_y)
-
-			window.blit(terrain,(0,0))
+		def draw_bg():
+			window.fill((15, 45, 20))
 
 		def draw_image(img_path, point, rotation = 0, scale = 1):
 			'''Rotation is around point supplied'''
@@ -192,10 +93,7 @@ class Map(object):
 			p2 = point2.transform(transf_vector)
 			pygame.draw.line(window, color, (p1.x, p1.y), (p2.x, p2.y), width)
 
-		if noise_bg:
-			draw_heightmap()
-		else:
-			window.fill((100, 180, 40))
+		draw_bg()
 
 		# Draw borders
 		for s in self.sectors:
@@ -308,5 +206,5 @@ class Map(object):
 if __name__ == '__main__':
 	m = Map(1200, 600)
 	m.generate_map(10, 10, 4)
-	m.draw_map_matplotlib()
-	m.draw_map_pygame(False)
+	#m.draw_map_matplotlib()
+	m.draw_map_pygame()
