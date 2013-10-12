@@ -1,7 +1,7 @@
 import math
 import random
 import numpy as np
-from scipy.spatial import Voronoi
+from scipy.spatial import Voronoi, ConvexHull
 
 class Point(object):
 	def __init__(self, x, y):
@@ -140,9 +140,14 @@ class Polygon(object):
 		'''
 		for s in polygon.sides:
 			for s_own in self.sides:
-				p = s.intersect(s_own)
-				if s.on_vector(p) and s_own.on_vector(p):
-					return True
+				
+				try:
+					p = s.intersect(s_own)
+					if s.on_vector(p) and s_own.on_vector(p):
+						return True
+
+				except ZeroDivisionError:
+					return False
 
 		return False
 
@@ -181,7 +186,39 @@ class Polygon(object):
 		cent = self.centroid.coordinates()
 		pp.sort(key=lambda p: math.atan2(p[1]-cent[1],p[0]-cent[0]))
 		self.points = [Point(p[0], p[1]) for p in pp]
-		self.update()		
+		self.update()
+
+	def borders_polygon(self, polygon):
+		'''
+			Checks whether the polygon borders another polygon.
+			Returns a list containing the common sides.
+		'''
+
+	def merge(self, polygon):
+		'''
+			Merges the polygon with another polygon. The two new polygons must have
+			at least one side in common to be merged.
+		'''
+		pol_points = [tuple(p.coordinates()) for p in polygon.points]
+		points = [tuple(p.coordinates()) for p in self.points]
+
+		num_common = 0
+		for p in points:
+			if p in pol_points:
+				num_common += 1
+
+		if num_common < 2:
+			raise RuntimeError('Polygons do not have at least one common side.')
+
+		all_points = set(pol_points + points)
+		if len(all_points) >= 3:
+			arr = np.array([list(l) for l in all_points])
+			hull = ConvexHull(arr).points
+			self.points = [Point(p[0], p[1]) for p in hull]
+			self.reorder_points()
+		else:
+			pass
+			#raise RuntimeError('Couldnt merge too little points')
 
 class Rectangle(object):
 	def __init__(self, bl, tr):
@@ -318,15 +355,15 @@ class Rectangle(object):
 		s_x = self.tr.x - self.bl.x
 		s_y = self.tr.y - self.bl.x
 
-		dist = (s_x + s_y) / ( 2 * num_sectors)
+		dist = (s_x + s_y) / (4 * num_sectors)
 
 		for i in frange(self.bl.x, self.tr.x, dist):
-			points.append([i, self.bl.y*0.75])
-			points.append([i, self.tr.y*1.25])
+			points.append([i, self.bl.y*0.8])
+			points.append([i, self.tr.y*1.2])
 
 		for i in frange(self.bl.y, self.tr.y, dist):
-			points.append([self.bl.x*0.75, i])
-			points.append([self.tr.x*1.25, i])
+			points.append([self.bl.x*0.8, i])
+			points.append([self.tr.x*1.2, i])
 
 		vor = Voronoi(np.array(points))
 
@@ -365,19 +402,51 @@ class Rectangle(object):
 				if len(new_ps) >= 3:
 					sectors.append(Polygon(new_ps))
 
+		# Merge small sectors
+		to_del = []
+		for i, s in enumerate(sectors):
+			if s.area > ((0.01/num_sectors)*self.area):
+				pass
+			else:
+				to_del.append(i)
+
+		for i in to_del:
+			s = sectors[i]
+			dists =	[tuple([Vector(s.centroid, c.centroid).length(), j]) for j, c in enumerate(sectors) if j not in to_del]
+			arranged = sorted(dists)[:3]
+			for _, closest in arranged:
+				try:
+					sectors[closest].merge(s)
+					break
+				except RuntimeError:
+					pass
+
+		for index in sorted(to_del, reverse=True):
+			del sectors[index]
+
 		# Add corners to closest sector
 		for c in self.corners:
-			dists =	[tuple([Vector(s.centroid, c).length(), s.centroid]) for s in sectors]
+			dists =	[tuple([Vector(s.centroid, c).length(), i]) for i, s in enumerate(sectors)]
 			closest = sorted(dists)
-			for s in sectors:
-				if s.centroid == closest[0][1]:
-					s.add_point(c)
-					# IMPLEMENT: Check if new polygon overlaps with any other polygons...
+			i = 0
+			found = False
+			while not found and i < len(sectors):
+				ind = closest[i][1]
+				s = sectors[ind]
+				# Make copy in case of intersecting
+				orig_sector = s.copy()
 
-		# Remove small sectors
-		sect = []
-		for s in sectors:
-			if s.area > ((0.05/num_sectors)*self.area):
-				sect.append(s)
-		
-		return sect
+				# Add point
+				s.add_point(c)
+				
+				for sect in sectors:
+					if s.intersect_polygon(sect):
+						sectors[ind] = orig_sector
+						break
+				else:
+					found = True
+				i += 1
+
+			print found
+
+		return sectors

@@ -205,6 +205,6 @@ class Map(object):
 
 if __name__ == '__main__':
 	m = Map(1200, 600)
-	m.generate_map(10, 10, 4)
-	#m.draw_map_matplotlib()
-	m.draw_map_pygame()
+	m.generate_map(15, 10, 4)
+	m.draw_map_matplotlib()
+	#m.draw_map_pygame()
