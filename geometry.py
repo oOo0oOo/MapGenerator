@@ -358,12 +358,12 @@ class Rectangle(object):
 		dist = (s_x + s_y) / (4 * num_sectors)
 
 		for i in frange(self.bl.x, self.tr.x, dist):
-			points.append([i, self.bl.y*0.8])
-			points.append([i, self.tr.y*1.2])
+			points.append([i, self.bl.y*0.5])
+			points.append([i, self.tr.y*1.5])
 
 		for i in frange(self.bl.y, self.tr.y, dist):
-			points.append([self.bl.x*0.8, i])
-			points.append([self.tr.x*1.2, i])
+			points.append([self.bl.x*0.5, i])
+			points.append([self.tr.x*1.5, i])
 
 		vor = Voronoi(np.array(points))
 
@@ -376,11 +376,39 @@ class Rectangle(object):
 				col = []
 				ps = [Point(vert[p][0], vert[p][1]) for p in points if p != -1]				
 				poly = Polygon(ps)
-
-				#Shorten Polygons (cut eges outside of map...)
 				poly.reorder_points()
+
+				# Check if sector is on the map and if it has to be cut
+				ins = [self.inside(p) for p in ps]
+				#side_inter = [self.intersect_walls(s) for s in poly.sides]
+				#print ins, side_inter
+				'''
+				if any(side_inter) and any(ins):
+					# Cut polygon at sides
+					# All points already inside the map are accepted
+					points = [p for i, p in enumerate(poly.points) if ins[i]]
+
+					# Add all intersection points
+					for res in side_inter:
+						if res:
+							points.append(res[0])
+
+					#print points
+					poly2 = Polygon(points)
+					poly2.reorder_points()
+					sectors.append(poly2)
+
+				elif all(ins):
+					sectors.append(poly)
+
+				'''	
+				if any(ins):
+					sectors.append(poly)
+
+				'''
 				new_ps = []
 				for side in poly.sides:
+
 					ps = self.intersect_walls(side)
 					if len(ps) == 1:
 						if self.inside(side.p1):
@@ -393,16 +421,20 @@ class Rectangle(object):
 					elif not ps and self.inside(side.p1):
 						new_ps.append(side.p1)
 						new_ps.append(side.p2)
+				'''
 
-				ps = []
-				for p in new_ps:
-					if p not in ps:
-						ps.append(p)
-				
+				#ps = []
+				#for p in new_ps:
+				#	if p not in ps:
+				#		ps.append(p)
+				'''
 				if len(new_ps) >= 3:
 					sectors.append(Polygon(new_ps))
+				'''
+				
 
 		# Merge small sectors
+		'''
 		to_del = []
 		for i, s in enumerate(sectors):
 			if s.area > ((0.01/num_sectors)*self.area):
@@ -424,7 +456,9 @@ class Rectangle(object):
 		for index in sorted(to_del, reverse=True):
 			del sectors[index]
 
+		'''
 		# Add corners to closest sector
+		'''
 		for c in self.corners:
 			dists =	[tuple([Vector(s.centroid, c).length(), i]) for i, s in enumerate(sectors)]
 			closest = sorted(dists)
@@ -446,7 +480,6 @@ class Rectangle(object):
 				else:
 					found = True
 				i += 1
-
-			print found
-
+		
+		'''
 		return sectors
