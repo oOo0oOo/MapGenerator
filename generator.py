@@ -47,6 +47,8 @@ class Map(object):
 
 		self.sectors = self.board.create_mesh(num_sectors, self.players)
 
+
+
 	def draw_map_pygame(self):
 		pygame.init() 
 		window = pygame.display.set_mode((self.size_x, self.size_y))
@@ -56,7 +58,7 @@ class Map(object):
 		sector_font = pygame.font.SysFont("Tahoma", 35)
 
 		def draw_bg():
-			window.fill((15, 45, 20))
+			window.fill((80, 150, 60))
 
 		def draw_image(img_path, point, rotation = 0, scale = 1):
 			'''Rotation is around point supplied'''
@@ -91,7 +93,7 @@ class Map(object):
 		def draw_line(point1, point2, color = (0, 0, 0), width = 1):
 			p1 = point1.transform(transf_vector)
 			p2 = point2.transform(transf_vector)
-			pygame.draw.line(window, color, (p1.x, p1.y), (p2.x, p2.y), width)
+			pygame.draw.aaline(window, color, (p1.x, p1.y), (p2.x, p2.y), 2)
 
 		draw_bg()
 
@@ -99,14 +101,14 @@ class Map(object):
 		for s in self.sectors:
 			# Draw borders
 			for l in s.sides:
-				draw_line(l.p1, l.p2, (98, 98, 135), width = 3)
+				draw_line(l.p1, l.p2, (50, 50, 135), width = 3)
 
 		# Hedges
-		for points in self.hedges:
-			last = len(points) - 1
-			for i, p in enumerate(points):
-				if i != last:
-					draw_line(p, points[i+1], (80, 30, 0), 10)
+		#for points in self.hedges:
+		#	last = len(points) - 1
+		#	for i, p in enumerate(points):
+		#		if i != last:
+		#			draw_line(p, points[i+1], (80, 30, 0), 3)
 
 		#Draw houses
 		base = 'img/houses/'
@@ -124,7 +126,8 @@ class Map(object):
 		# Draw sector numbers
 		for num, s in enumerate(self.sectors):
 			# Draw number
-			draw_text(str(num+1), s.centroid)
+			pass
+			#draw_text(str(num+1), s.centroid)
 
 
 		'''
@@ -204,7 +207,7 @@ class Map(object):
 		plt.show()
 
 if __name__ == '__main__':
-	m = Map(1200, 600)
+	m = Map(1200, 800)
 	m.generate_map(15, 10, 4)
-	m.draw_map_matplotlib()
-	#m.draw_map_pygame()
+	#m.draw_map_matplotlib()
+	m.draw_map_pygame()
